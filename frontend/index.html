@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poseidon — Ballenas</title>
+<style>
+  :root{
+    --bg:#0B1E2E; --surface:#102A3D; --surface2:#15344A; --line:#1F4258;
+    --ink:#EAF2F5; --ink-dim:#7F9AAC; --teal:#3FB8AF; --gold:#E8A33D; --coral:#E8604C;
+    color-scheme: dark;
+    box-sizing:border-box;
+    padding-top: env(safe-area-inset-top,0px);
+    padding-bottom: env(safe-area-inset-bottom,0px);
+  }
+  :root[data-theme="light"]{
+    --bg:#F3F7F8; --surface:#FFFFFF; --surface2:#EAF1F3; --line:#D6E2E6;
+    --ink:#0B1E2E; --ink-dim:#5C7484; --teal:#1E8C84; --gold:#B5761F; --coral:#C24632;
+    color-scheme: light;
+  }
+  html{scroll-padding-top: env(safe-area-inset-top,0px);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family: 'Fraunces', Georgia, serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);}
+  .mono{font-family:'IBM Plex Mono', 'SF Mono', Menlo, monospace;}
+  header{
+    position:sticky; top:env(safe-area-inset-top,0px); z-index:5;
+    background:var(--bg); border-bottom:1px solid var(--line);
+    padding:18px 18px 14px;
+  }
+  .brand{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .brand h1{margin:0; font-size:1.5rem; font-weight:600; letter-spacing:.2px;}
+  .brand h1 span{color:var(--teal);}
+  .theme-toggle{
+    background:none; border:1px solid var(--line); color:var(--ink-dim);
+    border-radius:20px; padding:5px 12px; font-size:.72rem; font-family:inherit; cursor:pointer;
+  }
+  .demo-banner{
+    margin-top:12px; padding:9px 12px; border-radius:8px;
+    background:rgba(232,163,61,.12); border:1px solid rgba(232,163,61,.4);
+    color:var(--gold); font-family:'IBM Plex Mono',monospace; font-size:.68rem;
+    line-height:1.5;
+  }
+  .filters{display:flex; gap:8px; overflow-x:auto; margin-top:14px; padding-bottom:2px;}
+  .filters::-webkit-scrollbar{display:none;}
+  .chip{
+    flex:0 0 auto; padding:7px 14px; border-radius:18px; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink-dim); font-size:.82rem; font-family:'IBM Plex Mono',monospace;
+    cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{background:var(--teal); border-color:var(--teal); color:#06201D;}
+
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--line); margin:14px 0; border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+  .stat{background:var(--surface); padding:12px 10px; text-align:center;}
+  .stat b{display:block; font-family:'IBM Plex Mono',monospace; font-size:1.15rem; color:var(--ink);}
+  .stat small{color:var(--ink-dim); font-size:.66rem; letter-spacing:.3px;}
+
+  main{padding:4px 18px 40px; max-width:620px; margin:0 auto;}
+  .feed-label{font-size:.72rem; color:var(--ink-dim); margin:18px 2px 8px; font-family:'IBM Plex Mono',monospace;}
+
+  .move{
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:14px 14px; margin-bottom:10px; display:flex; flex-direction:column; gap:8px;
+  }
+  .move-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .wallet{font-family:'IBM Plex Mono',monospace; font-size:.78rem; color:var(--ink-dim);}
+  .wallet b{color:var(--ink);}
+  .amount-wrap{text-align:right;}
+  .amount{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:1.05rem;}
+  .amount.buy{color:var(--teal);}
+  .amount.sell{color:var(--coral);}
+  .side-label{display:block; font-size:.62rem; letter-spacing:.4px; font-family:'IBM Plex Mono',monospace;}
+  .side-label.buy{color:var(--teal);}
+  .side-label.sell{color:var(--coral);}
+  .pick{font-size:.78rem; color:var(--ink-dim); margin-top:-2px;}
+  .pick b{color:var(--ink);}
+  .price-row{display:flex; gap:14px; margin-top:2px; font-size:.72rem; color:var(--ink-dim); font-family:'IBM Plex Mono',monospace;}
+  .price-row b{color:var(--ink);}
+  .price-row .shift{color:var(--gold);}
+  .links{display:flex; gap:8px; margin-top:4px;}
+  .link-btn{
+    flex:1; text-align:center; padding:7px 0; border-radius:7px; border:1px solid var(--line);
+    background:var(--surface2); color:var(--ink-dim); font-size:.7rem; font-family:'IBM Plex Mono',monospace;
+    text-decoration:none;
+  }
+  .link-btn:active{opacity:.7;}
+  .move{cursor:pointer;}
+
+  .overlay{
+    position:fixed; inset:0; background:rgba(5,14,22,.72); z-index:20;
+    display:none; align-items:flex-end; justify-content:center;
+  }
+  .overlay.open{display:flex;}
+  .sheet{
+    width:100%; max-width:620px; background:var(--surface); border:1px solid var(--line);
+    border-radius:16px 16px 0 0; padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));
+    max-height:86vh; overflow-y:auto;
+  }
+  .sheet-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .sheet-top h2{margin:0; font-size:1.05rem;}
+  .close-btn{background:none; border:none; color:var(--ink-dim); font-size:1.3rem; line-height:1; cursor:pointer;}
+  .live-box{
+    margin-top:16px; border:1px solid var(--line); border-radius:10px; padding:14px; background:var(--surface2);
+  }
+  .live-head{display:flex; align-items:center; gap:8px; font-family:'IBM Plex Mono',monospace; font-size:.72rem; color:var(--ink-dim); margin-bottom:8px;}
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--line);}
+  .dot.live{background:var(--coral); box-shadow:0 0 0 3px rgba(232,96,76,.25);}
+  .live-score{font-size:1.1rem; font-family:'IBM Plex Mono',monospace;}
+  .live-note{font-size:.68rem; color:var(--ink-dim); margin-top:8px; line-height:1.5;}
+  .market{font-size:.95rem; line-height:1.4;}
+  .move-meta{display:flex; justify-content:space-between; align-items:center; font-size:.72rem; color:var(--ink-dim); font-family:'IBM Plex Mono',monospace;}
+  .tag{padding:2px 8px; border-radius:10px; background:var(--surface2); border:1px solid var(--line);}
+  .conviction{display:flex; align-items:center; gap:6px;}
+  .bars{display:flex; gap:2px;}
+  .bar{width:4px; height:10px; border-radius:1px; background:var(--line);}
+  .bar.on{background:var(--gold);}
+
+  footer{max-width:620px; margin:0 auto; padding:0 18px 30px; color:var(--ink-dim); font-size:.72rem; line-height:1.6; font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+  <header>
+  <div class="brand">
+    <h1>🔱 <span>Poseidon</span> · Ballenas</h1>
+    <button class="theme-toggle" onclick="toggleTheme()">tema</button>
+  </div>
+  <div class="demo-banner" id="dataBanner">
+    ⚠ Wallets y montos de ballenas: datos de ejemplo (todavía sin conectar al backend). Mirá el README del backend para conectarlo.
+  </div>
+  <div class="filters" id="filters">
+    <div class="chip active" data-f="all">Todo</div>
+    <div class="chip" data-f="futbol">Fútbol</div>
+    <div class="chip" data-f="nba">NBA</div>
+    <div class="chip" data-f="nfl">NFL</div>
+    <div class="chip" data-f="mlb">MLB</div>
+    <div class="chip" data-f="lol">LoL</div>
+    <div class="chip" data-f="csgo">CS</div>
+    <div class="chip" data-f="tenis">Tenis</div>
+  </div>
+</header>
+
+<main>
+  <div class="stats">
+    <div class="stat"><b>14</b><small>MOVIMIENTOS 24H</small></div>
+    <div class="stat"><b>$312K</b><small>CAPITAL TOTAL</small></div>
+    <div class="stat"><b>8</b><small>BALLENAS ACTIVAS</small></div>
+  </div>
+
+  <div class="feed-label">MOVIMIENTOS RECIENTES</div>
+  <div id="feed"></div>
+</main>
+
+<footer>
+  Umbral de ballena: posiciones ≥ $10,000 USDC. Convicción estimada por % del bankroll de la wallet puesto en una posición.
+</footer>
+
+<div class="overlay" id="overlay">
+  <div class="sheet">
+    <div class="sheet-top">
+      <h2 id="sheetTitle">Detalle</h2>
+      <button class="close-btn" onclick="closeSheet()">✕</button>
+    </div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<script>
+  // ── Conexión al backend real ─────────────────────────────────────────────
+// Reemplazá esta URL por la de tu deploy de Vercel (carpeta poseidon-backend),
+// por ejemplo: 'https://tu-proyecto.vercel.app/api/whales'
+// Mientras diga 'TU_BACKEND_AQUI' la app usa datos de ejemplo.
+const API_URL = 'TU_BACKEND_AQUI';
+
+const CATEGORY_KEYWORDS = {
+  futbol: ['soccer','futbol','fútbol','football','premier-league','la-liga','laliga','serie-a','bundesliga','ligue-1','champions-league','uefa','fifa','world-cup','copa','libertadores','mls','clasico','clásico','real-madrid','barcelona'],
+  nba: ['nba','lakers','celtics','warriors','bucks'],
+  nfl: ['nfl','chiefs','bills','seahawks','eagles'],
+  mlb: ['mlb','yankees','world-series','dodgers'],
+  lol: ['lol','league-of-legends','worlds','t1','gen.g'],
+  csgo: ['csgo','cs2','counter-strike','navi','faze','major'],
+  tenis: ['tennis','tenis','atp','wta','djokovic','alcaraz','sinner','wimbledon']
+};
+function guessCategory(text){
+  const t = (text || '').toLowerCase();
+  for (const [cat, words] of Object.entries(CATEGORY_KEYWORDS)){
+    if (words.some(w => t.includes(w))) return cat;
+  }
+  return 'futbol';
+}
+
+function mapApiTrade(t){
+  const cat = guessCategory(`${t.market} ${t.slug} ${t.eventSlug}`);
+  const side = (t.side || '').toLowerCase() === 'sell' ? 'sell' : 'buy';
+  return {
+    wallet: t.walletShort || t.wallet,
+    market: t.market || 'Mercado sin título',
+    pick: t.pick || '—',
+    cat,
+    side,
+    amount: `$${(t.amountUsd || 0).toLocaleString('es-ES')}`,
+    price: `${t.priceCents ?? '—'}¢`,
+    before: undefined,
+    payout: side === 'buy' && t.sizeTokens ? `$${Math.round(t.sizeTokens).toLocaleString('es-ES')}` : '—',
+    conviction: undefined,
+    time: t.timeAgo || '—',
+    walletUrl: t.walletUrl,
+    marketUrl: t.marketUrl,
+    live: { status: 'pronto', detail: 'Conectá una fuente de marcador para esta partida', real: false }
+  };
+}
+
+async function loadWhales(){
+  if (!API_URL || API_URL === 'TU_BACKEND_AQUI'){
+    render('all');
+    return;
+  }
+  try{
+    const res = await fetch(`${API_URL}?min=10000&limit=40`);
+    if (!res.ok) throw new Error('Backend respondió ' + res.status);
+    const json = await res.json();
+    if (!json.trades || !json.trades.length) throw new Error('Sin movimientos');
+    DATA.length = 0;
+    DATA.push(...json.trades.map(mapApiTrade));
+    document.getElementById('dataBanner').textContent = `✓ Datos reales de Polymarket · actualizado ${new Date(json.updatedAt).toLocaleTimeString('es-ES')}`;
+  } catch(err){
+    console.warn('No se pudo conectar al backend, usando demo:', err);
+  }
+  render('all');
+}
+
+const DATA = [
+  {wallet:"0x7a3f…9c21", market:"Real Madrid gana el Clásico (LaLiga)", pick:"SÍ", cat:"futbol", side:"buy", amount:"$42,500", price:"71¢", before:"66¢", payout:"$59,859", conviction:4, time:"hace 12 min", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/real-madrid-vs-barcelona", live:{status:"pronto", detail:"Barcelona vs Real Madrid · hoy 2:00 PM · favorito: Barcelona 58%", real:true}},
+  {wallet:"0x1b9e…44fd", market:"T1 vs Gen.G — Final Worlds", pick:"T1", cat:"lol", side:"buy", amount:"$28,900", price:"58¢", before:"54¢", payout:"$49,827", conviction:5, time:"hace 31 min", walletUrl:"https://polymarket.com/profile/0x1b9e...44fd", marketUrl:"https://polymarket.com/event/lol-worlds-final", live:{status:"vivo", detail:"T1 2 – 1 Gen.G · Mapa 4"}},
+  {wallet:"0x5c02…0a8b", market:"Lakers cubre el spread vs Jazz", pick:"SÍ", cat:"nba", side:"buy", amount:"$15,200", price:"68¢", before:"63¢", payout:"$22,353", conviction:2, time:"hace 48 min", walletUrl:"https://polymarket.com/profile/0x5c02...0a8b", marketUrl:"https://polymarket.com/event/jazz-lakers", live:{status:"pronto", detail:"Utah Jazz vs Lakers · hoy 3:00 PM · favorito: Lakers 68%", real:true}},
+  {wallet:"0x9f41…eb33", market:"Yankees ganan la Serie Mundial 2027", pick:"SÍ", cat:"mlb", side:"buy", amount:"$61,000", price:"22¢", before:"18¢", payout:"$277,272", conviction:5, time:"hace 1 h", walletUrl:"https://polymarket.com/profile/0x9f41...eb33", marketUrl:"https://polymarket.com/event/world-series-2027", live:{status:"pronto", detail:"Futuro de temporada · sin partido hoy"}},
+  {wallet:"0x2d88…771c", market:"Chiefs gana vs Seahawks", pick:"SÍ", cat:"nfl", side:"buy", amount:"$19,800", price:"53¢", before:"50¢", payout:"$37,358", conviction:3, time:"hace 2 h", walletUrl:"https://polymarket.com/profile/0x2d88...771c", marketUrl:"https://polymarket.com/event/seahawks-chiefs", live:{status:"pronto", detail:"Seahawks vs Chiefs · hoy 6:20 PM · Sunday Night Football", real:true}},
+  {wallet:"0xae07…c640", market:"NAVI gana el Major (CS2)", pick:"NO", cat:"csgo", side:"sell", amount:"$11,400", price:"76¢", before:"80¢", payout:"—", conviction:2, time:"hace 3 h", walletUrl:"https://polymarket.com/profile/0xae07...c640", marketUrl:"https://polymarket.com/event/cs2-major", live:{status:"vivo", detail:"NAVI 7 – 5 FaZe · Mapa 2, Mirage"}},
+  {wallet:"0x7a3f…9c21", market:"Boca gana la Copa Libertadores", pick:"SÍ", cat:"futbol", side:"buy", amount:"$33,750", price:"34¢", before:"29¢", payout:"$99,264", conviction:4, time:"hace 4 h", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/copa-libertadores", live:{status:"finalizado", detail:"Boca 2 – 1 River · Final"}},
+  {wallet:"0x3e61…10af", market:"Djokovic gana el Masters 1000", pick:"Djokovic", cat:"tenis", side:"buy", amount:"$24,300", price:"61¢", before:"57¢", payout:"$39,836", conviction:4, time:"hace 5 h", walletUrl:"https://polymarket.com/profile/0x3e61...10af", marketUrl:"https://polymarket.com/event/masters-1000", live:{status:"vivo", detail:"Djokovic 6-4, 3-2 · Set 2"}},
+  {wallet:"0x88c4…502e", market:"Alcaraz gana en 3 sets vs Sinner", pick:"NO", cat:"tenis", side:"sell", amount:"$9,600", price:"43¢", before:"47¢", payout:"—", conviction:1, time:"hace 6 h", walletUrl:"https://polymarket.com/profile/0x88c4...502e", marketUrl:"https://polymarket.com/event/alcaraz-sinner", live:{status:"pronto", detail:"Comienza mañana 14:00"}},
+];const feed = document.getElementById('feed');
+
+function render(filter){
+  feed.innerHTML = '';
+  const list = DATA.filter(d => filter==='all' || d.cat===filter);
+  list.forEach((d, i)=>{
+    const bars = [1,2,3,4,5].map(n=>`<div class="bar ${n<=d.conviction?'on':''}"></div>`).join('');
+    const el = document.createElement('div');
+    el.className = 'move';
+    el.onclick = ()=> openSheet(i, list);
+    el.innerHTML = `
+      <div class="move-top">
+        <div class="wallet">Wallet <b>${d.wallet}</b></div>
+        <div class="amount-wrap">
+          <span class="side-label ${d.side}">${d.side==='buy'?'COMPRA ↑':'VENTA ↓'}</span>
+          <div class="amount ${d.side}">${d.side==='buy'?'+':'−'}${d.amount}</div>
+        </div>
+      </div>
+      <div class="market">${d.market}</div>
+      <div class="pick">Apuesta a: <b>${d.pick}</b></div>
+      <div class="price-row">
+        <span>Precio entrada: <b>${d.price}</b></span>
+        ${d.before ? `<span>Antes: ${d.before} <span class="shift">(${d.price>d.before?'subió':'bajó'})</span></span>` : ''}
+        ${d.payout && d.payout!=='—' ? `<span>Si gana cobra: <b>${d.payout}</b></span>` : ''}
+      </div>
+      <div class="links">
+        <a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver wallet ↗</a>
+        <a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver mercado ↗</a>
+      <div class="move-meta">
+        <span class="tag">${d.cat.toUpperCase()}</span>
+        ${d.conviction ? `<div class="conviction"><div class="bars">${bars}</div></div>` : ''}
+        <span>${d.time}</span>
+      </div>`;
+    feed.appendChild(el);
+  });
+}
+loadWhales();
+
+function openSheet(idx, filteredList){
+  const d = filteredList[idx];
+  document.getElementById('sheetTitle').textContent = d.market;
+  const bars = [1,2,3,4,5].map(n=>`<div class="bar ${n<=d.conviction?'on':''}"></div>`).join('');
+  document.getElementById('sheetBody').innerHTML = `
+    <div class="wallet">Wallet <b>${d.wallet}</b> · ${d.time}</div>
+    <div class="pick" style="margin-top:8px;">Apuesta a: <b>${d.pick}</b></div>
+    <div class="price-row" style="margin-top:6px;">
+      <span>Entró a <b>${d.price}</b></span>
+      ${d.before ? `<span>Antes: ${d.before}</span>` : ''}
+      ${d.payout && d.payout!=='—' ? `<span>Cobra: <b>${d.payout}</b></span>` : ''}
+    </div>
+    ${d.conviction ? `<div class="move-meta" style="margin-top:10px;"><div class="conviction"><div class="bars">${bars}</div></div><span>Convicción</span></div>` : ''}
+    <div class="links" style="margin-top:14px;">
+      <a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener">Ver wallet ↗</a>
+      <a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener">Ver en Polymarket ↗</a>
+    </div>
+    <div class="live-box">
+      <div class="live-head"><div class="dot ${d.live.status==='vivo'?'live':''}"></div>${d.live.status==='vivo'?'EN VIVO':d.live.status==='pronto'?'PRÓXIMAMENTE':'FINALIZADO'}</div>
+      <div class="live-score">${d.live.detail}</div>
+      <div class="live-note">${d.live.real ? '✓ Marcador real, consultado recién por Claude (no se auto-actualiza solo; hace falta backend propio para eso).' : '⚠ DEMO — todavía no hay fuente de datos conectada para esta partida (esports).'}</div>
+    </div>`;
+  document.getElementById('overlay').classList.add('open');
+}
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); }
+document.getElementById('overlay').addEventListener('click', e=>{ if(e.target.id==='overlay') closeSheet(); });
+
+document.getElementById('filters').addEventListener('click', e=>{
+  const chip = e.target.closest('.chip');
+  if(!chip) return;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  render(chip.dataset.f);
+});
+
+function toggleTheme(){
+  const r = document.documentElement;
+  r.setAttribute('data-theme', r.getAttribute('data-theme')==='light' ? 'dark' : 'light');
+}
+</script>
+</body>
+</html>
