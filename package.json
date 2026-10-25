@@ -1,0 +1,7 @@
+{
+  "name": "poseidon-whales-backend",
+  "version": "1.0.0",
+  "description": "Backend que expone movimientos de ballenas de Polymarket (deportes/esports) para Poseidon",
+  "license": "UNLICENSED",
+  "private": true
+}
