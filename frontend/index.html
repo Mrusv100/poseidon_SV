@@ -123,7 +123,8 @@
 </style>
 </head>
 <body>
-  <header>
+
+<header>
   <div class="brand">
     <h1>🔱 <span>Poseidon</span> · Ballenas</h1>
     <button class="theme-toggle" onclick="toggleTheme()">tema</button>
@@ -145,9 +146,9 @@
 
 <main>
   <div class="stats">
-    <div class="stat"><b>14</b><small>MOVIMIENTOS 24H</small></div>
-    <div class="stat"><b>$312K</b><small>CAPITAL TOTAL</small></div>
-    <div class="stat"><b>8</b><small>BALLENAS ACTIVAS</small></div>
+    <div class="stat"><b id="statCount">14</b><small>MOVIMIENTOS 24H</small></div>
+    <div class="stat"><b id="statCapital">$312K</b><small>CAPITAL TOTAL</small></div>
+    <div class="stat"><b id="statWhales">8</b><small>BALLENAS ACTIVAS</small></div>
   </div>
 
   <div class="feed-label">MOVIMIENTOS RECIENTES</div>
@@ -169,7 +170,7 @@
 </div>
 
 <script>
-  // ── Conexión al backend real ─────────────────────────────────────────────
+// ── Conexión al backend real ─────────────────────────────────────────────
 // Reemplazá esta URL por la de tu deploy de Vercel (carpeta poseidon-backend),
 // por ejemplo: 'https://tu-proyecto.vercel.app/api/whales'
 // Mientras diga 'TU_BACKEND_AQUI' la app usa datos de ejemplo.
@@ -192,6 +193,9 @@ function guessCategory(text){
   return 'futbol';
 }
 
+// Convierte lo que devuelve /api/whales al formato que usa esta UI.
+// Ojo: la API de Polymarket no entrega "precio antes" ni "% de bankroll" (convicción),
+// así que esos campos quedan undefined en datos reales — el render ya contempla eso.
 function mapApiTrade(t){
   const cat = guessCategory(`${t.market} ${t.slug} ${t.eventSlug}`);
   const side = (t.side || '').toLowerCase() === 'sell' ? 'sell' : 'buy';
@@ -202,6 +206,7 @@ function mapApiTrade(t){
     cat,
     side,
     amount: `$${(t.amountUsd || 0).toLocaleString('es-ES')}`,
+    amountNum: t.amountUsd || 0,
     price: `${t.priceCents ?? '—'}¢`,
     before: undefined,
     payout: side === 'buy' && t.sizeTokens ? `$${Math.round(t.sizeTokens).toLocaleString('es-ES')}` : '—',
@@ -216,6 +221,7 @@ function mapApiTrade(t){
 async function loadWhales(){
   if (!API_URL || API_URL === 'TU_BACKEND_AQUI'){
     render('all');
+    computeStats();
     return;
   }
   try{
@@ -230,19 +236,30 @@ async function loadWhales(){
     console.warn('No se pudo conectar al backend, usando demo:', err);
   }
   render('all');
+  computeStats();
+}
+
+function computeStats(){
+  const capital = DATA.reduce((sum, d) => sum + (d.amountNum || 0), 0);
+  const wallets = new Set(DATA.map(d => d.wallet)).size;
+  document.getElementById('statCount').textContent = DATA.length;
+  document.getElementById('statCapital').textContent = capital >= 1000000 ? `$${(capital/1000000).toFixed(1)}M` : `$${Math.round(capital/1000)}K`;
+  document.getElementById('statWhales').textContent = wallets;
 }
 
 const DATA = [
-  {wallet:"0x7a3f…9c21", market:"Real Madrid gana el Clásico (LaLiga)", pick:"SÍ", cat:"futbol", side:"buy", amount:"$42,500", price:"71¢", before:"66¢", payout:"$59,859", conviction:4, time:"hace 12 min", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/real-madrid-vs-barcelona", live:{status:"pronto", detail:"Barcelona vs Real Madrid · hoy 2:00 PM · favorito: Barcelona 58%", real:true}},
-  {wallet:"0x1b9e…44fd", market:"T1 vs Gen.G — Final Worlds", pick:"T1", cat:"lol", side:"buy", amount:"$28,900", price:"58¢", before:"54¢", payout:"$49,827", conviction:5, time:"hace 31 min", walletUrl:"https://polymarket.com/profile/0x1b9e...44fd", marketUrl:"https://polymarket.com/event/lol-worlds-final", live:{status:"vivo", detail:"T1 2 – 1 Gen.G · Mapa 4"}},
-  {wallet:"0x5c02…0a8b", market:"Lakers cubre el spread vs Jazz", pick:"SÍ", cat:"nba", side:"buy", amount:"$15,200", price:"68¢", before:"63¢", payout:"$22,353", conviction:2, time:"hace 48 min", walletUrl:"https://polymarket.com/profile/0x5c02...0a8b", marketUrl:"https://polymarket.com/event/jazz-lakers", live:{status:"pronto", detail:"Utah Jazz vs Lakers · hoy 3:00 PM · favorito: Lakers 68%", real:true}},
-  {wallet:"0x9f41…eb33", market:"Yankees ganan la Serie Mundial 2027", pick:"SÍ", cat:"mlb", side:"buy", amount:"$61,000", price:"22¢", before:"18¢", payout:"$277,272", conviction:5, time:"hace 1 h", walletUrl:"https://polymarket.com/profile/0x9f41...eb33", marketUrl:"https://polymarket.com/event/world-series-2027", live:{status:"pronto", detail:"Futuro de temporada · sin partido hoy"}},
-  {wallet:"0x2d88…771c", market:"Chiefs gana vs Seahawks", pick:"SÍ", cat:"nfl", side:"buy", amount:"$19,800", price:"53¢", before:"50¢", payout:"$37,358", conviction:3, time:"hace 2 h", walletUrl:"https://polymarket.com/profile/0x2d88...771c", marketUrl:"https://polymarket.com/event/seahawks-chiefs", live:{status:"pronto", detail:"Seahawks vs Chiefs · hoy 6:20 PM · Sunday Night Football", real:true}},
-  {wallet:"0xae07…c640", market:"NAVI gana el Major (CS2)", pick:"NO", cat:"csgo", side:"sell", amount:"$11,400", price:"76¢", before:"80¢", payout:"—", conviction:2, time:"hace 3 h", walletUrl:"https://polymarket.com/profile/0xae07...c640", marketUrl:"https://polymarket.com/event/cs2-major", live:{status:"vivo", detail:"NAVI 7 – 5 FaZe · Mapa 2, Mirage"}},
-  {wallet:"0x7a3f…9c21", market:"Boca gana la Copa Libertadores", pick:"SÍ", cat:"futbol", side:"buy", amount:"$33,750", price:"34¢", before:"29¢", payout:"$99,264", conviction:4, time:"hace 4 h", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/copa-libertadores", live:{status:"finalizado", detail:"Boca 2 – 1 River · Final"}},
-  {wallet:"0x3e61…10af", market:"Djokovic gana el Masters 1000", pick:"Djokovic", cat:"tenis", side:"buy", amount:"$24,300", price:"61¢", before:"57¢", payout:"$39,836", conviction:4, time:"hace 5 h", walletUrl:"https://polymarket.com/profile/0x3e61...10af", marketUrl:"https://polymarket.com/event/masters-1000", live:{status:"vivo", detail:"Djokovic 6-4, 3-2 · Set 2"}},
-  {wallet:"0x88c4…502e", market:"Alcaraz gana en 3 sets vs Sinner", pick:"NO", cat:"tenis", side:"sell", amount:"$9,600", price:"43¢", before:"47¢", payout:"—", conviction:1, time:"hace 6 h", walletUrl:"https://polymarket.com/profile/0x88c4...502e", marketUrl:"https://polymarket.com/event/alcaraz-sinner", live:{status:"pronto", detail:"Comienza mañana 14:00"}},
-];const feed = document.getElementById('feed');
+  {wallet:"0x7a3f…9c21", market:"Real Madrid gana el Clásico (LaLiga)", pick:"SÍ", cat:"futbol", side:"buy", amount:"$42,500", amountNum:42500, price:"71¢", before:"66¢", payout:"$59,859", conviction:4, time:"hace 12 min", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/real-madrid-vs-barcelona", live:{status:"pronto", detail:"Barcelona vs Real Madrid · hoy 2:00 PM · favorito: Barcelona 58%", real:true}},
+  {wallet:"0x1b9e…44fd", market:"T1 vs Gen.G — Final Worlds", pick:"T1", cat:"lol", side:"buy", amount:"$28,900", amountNum:28900, price:"58¢", before:"54¢", payout:"$49,827", conviction:5, time:"hace 31 min", walletUrl:"https://polymarket.com/profile/0x1b9e...44fd", marketUrl:"https://polymarket.com/event/lol-worlds-final", live:{status:"vivo", detail:"T1 2 – 1 Gen.G · Mapa 4"}},
+  {wallet:"0x5c02…0a8b", market:"Lakers cubre el spread vs Jazz", pick:"SÍ", cat:"nba", side:"buy", amount:"$15,200", amountNum:15200, price:"68¢", before:"63¢", payout:"$22,353", conviction:2, time:"hace 48 min", walletUrl:"https://polymarket.com/profile/0x5c02...0a8b", marketUrl:"https://polymarket.com/event/jazz-lakers", live:{status:"pronto", detail:"Utah Jazz vs Lakers · hoy 3:00 PM · favorito: Lakers 68%", real:true}},
+  {wallet:"0x9f41…eb33", market:"Yankees ganan la Serie Mundial 2027", pick:"SÍ", cat:"mlb", side:"buy", amount:"$61,000", amountNum:61000, price:"22¢", before:"18¢", payout:"$277,272", conviction:5, time:"hace 1 h", walletUrl:"https://polymarket.com/profile/0x9f41...eb33", marketUrl:"https://polymarket.com/event/world-series-2027", live:{status:"pronto", detail:"Futuro de temporada · sin partido hoy"}},
+  {wallet:"0x2d88…771c", market:"Chiefs gana vs Seahawks", pick:"SÍ", cat:"nfl", side:"buy", amount:"$19,800", amountNum:19800, price:"53¢", before:"50¢", payout:"$37,358", conviction:3, time:"hace 2 h", walletUrl:"https://polymarket.com/profile/0x2d88...771c", marketUrl:"https://polymarket.com/event/seahawks-chiefs", live:{status:"pronto", detail:"Seahawks vs Chiefs · hoy 6:20 PM · Sunday Night Football", real:true}},
+  {wallet:"0xae07…c640", market:"NAVI gana el Major (CS2)", pick:"NO", cat:"csgo", side:"sell", amount:"$11,400", amountNum:11400, price:"76¢", before:"80¢", payout:"—", conviction:2, time:"hace 3 h", walletUrl:"https://polymarket.com/profile/0xae07...c640", marketUrl:"https://polymarket.com/event/cs2-major", live:{status:"vivo", detail:"NAVI 7 – 5 FaZe · Mapa 2, Mirage"}},
+  {wallet:"0x7a3f…9c21", market:"Boca gana la Copa Libertadores", pick:"SÍ", cat:"futbol", side:"buy", amount:"$33,750", amountNum:33750, price:"34¢", before:"29¢", payout:"$99,264", conviction:4, time:"hace 4 h", walletUrl:"https://polymarket.com/profile/0x7a3f...9c21", marketUrl:"https://polymarket.com/event/copa-libertadores", live:{status:"finalizado", detail:"Boca 2 – 1 River · Final"}},
+  {wallet:"0x3e61…10af", market:"Djokovic gana el Masters 1000", pick:"Djokovic", cat:"tenis", side:"buy", amount:"$24,300", amountNum:24300, price:"61¢", before:"57¢", payout:"$39,836", conviction:4, time:"hace 5 h", walletUrl:"https://polymarket.com/profile/0x3e61...10af", marketUrl:"https://polymarket.com/event/masters-1000", live:{status:"vivo", detail:"Djokovic 6-4, 3-2 · Set 2"}},
+  {wallet:"0x88c4…502e", market:"Alcaraz gana en 3 sets vs Sinner", pick:"NO", cat:"tenis", side:"sell", amount:"$9,600", amountNum:9600, price:"43¢", before:"47¢", payout:"—", conviction:1, time:"hace 6 h", walletUrl:"https://polymarket.com/profile/0x88c4...502e", marketUrl:"https://polymarket.com/event/alcaraz-sinner", live:{status:"pronto", detail:"Comienza mañana 14:00"}},
+];
+
+const feed = document.getElementById('feed');
 
 function render(filter){
   feed.innerHTML = '';
@@ -268,8 +285,8 @@ function render(filter){
         ${d.payout && d.payout!=='—' ? `<span>Si gana cobra: <b>${d.payout}</b></span>` : ''}
       </div>
       <div class="links">
-        <a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver wallet ↗</a>
-        <a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver mercado ↗</a>
+        ${d.walletUrl ? `<a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver wallet ↗</a>` : `<span class="link-btn" style="opacity:.4;">Wallet N/D</span>`}
+        ${d.marketUrl ? `<a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Ver mercado ↗</a>` : `<span class="link-btn" style="opacity:.4;">Mercado N/D</span>`}
       <div class="move-meta">
         <span class="tag">${d.cat.toUpperCase()}</span>
         ${d.conviction ? `<div class="conviction"><div class="bars">${bars}</div></div>` : ''}
@@ -294,8 +311,8 @@ function openSheet(idx, filteredList){
     </div>
     ${d.conviction ? `<div class="move-meta" style="margin-top:10px;"><div class="conviction"><div class="bars">${bars}</div></div><span>Convicción</span></div>` : ''}
     <div class="links" style="margin-top:14px;">
-      <a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener">Ver wallet ↗</a>
-      <a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener">Ver en Polymarket ↗</a>
+      ${d.walletUrl ? `<a class="link-btn" href="${d.walletUrl}" target="_blank" rel="noopener">Ver wallet ↗</a>` : `<span class="link-btn" style="opacity:.4;">Wallet N/D</span>`}
+      ${d.marketUrl ? `<a class="link-btn" href="${d.marketUrl}" target="_blank" rel="noopener">Ver en Polymarket ↗</a>` : `<span class="link-btn" style="opacity:.4;">Mercado N/D</span>`}
     </div>
     <div class="live-box">
       <div class="live-head"><div class="dot ${d.live.status==='vivo'?'live':''}"></div>${d.live.status==='vivo'?'EN VIVO':d.live.status==='pronto'?'PRÓXIMAMENTE':'FINALIZADO'}</div>
